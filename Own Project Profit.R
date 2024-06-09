@@ -1,0 +1,933 @@
+
+# Project Store Global Sales 2012-2015
+
+Sys.setenv(LANG = "en_US.UTF-8")
+
+# Load necessary packages
+install.packages("rmarkdown")
+install.packages("knitr")
+install.packages("xfun")
+install.packages("readxl")
+install.packages("dplyr")
+install.packages("ggplot2")
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(dplyr)
+
+# download.file("https://view.officeapps.live.com/op/view.aspx?src=https%3A%2F%2Fraw.githubusercontent.com%2FYulianaKuri%2FSalesOwnProject%2Fmain%2FGlobal%2520Superstore%2520Orders%25202015.xlsx&wdOrigin=BROWSELINK, destfile = "archivo.xlsx", mode = "wb")
+# sales_data <- read_excel("archivo.xlsx")
+
+# Set working directory and load data
+
+getwd()
+setwd("/Users/nadda/OneDrive/Documents/Project Machine Learning")
+sales_data <- read_excel("Global Superstore Orders 2015.xlsx")
+head(sales_data)
+summary(sales_data)  # Get summary statistics which can help in identifying anomalies
+str(sales_data)      # Check the structure to understand data types
+print(colnames(sales_data))
+
+# Summarize Sales and Profit by Category
+category_summary <- sales_data %>%
+  group_by(Category) %>%
+  summarise(
+    Total_Sales = sum(Sales, na.rm = TRUE),
+    Total_Profit = sum(Profit, na.rm = TRUE)
+  )
+
+# Print the summary
+print(category_summary)
+
+# The following four boxplots are essential for understanding the data's distribution, 
+# identifying outliers, and comparing different variables within the sales dataset.
+#OUTIERS PLOT 
+
+# Boxplot para Sales
+ggplot(sales_data, aes(y = Sales)) +
+  geom_boxplot(fill = "blue") +
+  ggtitle("Boxplot de Sales")
+
+# Boxplot para Descuentos
+ggplot(sales_data, aes(y = Discount)) +
+  geom_boxplot(fill = "pink") +
+  ggtitle("Boxplot de Descuentos")
+
+# Boxplot para Shipping Cost
+ggplot(sales_data, aes(y = Shipping_Cost)) +
+  geom_boxplot(fill = "magenta") +
+  ggtitle("Boxplot de Shipping_Cost")
+
+# Boxplot para Profit
+ggplot(sales_data, aes(y = Profit)) +
+  geom_boxplot(fill = "violet") +
+  ggtitle("Boxplot de Profit")
+
+# OUTLIER CLEANING METHOD
+# Method Using Interquartile Range (IQR) for SALES
+
+# Calculating the IQR
+Q1 <- quantile(sales_data$Sales, 0.25, na.rm = TRUE)
+Q3 <- quantile(sales_data$Sales, 0.75, na.rm = TRUE)
+IQR <- Q3 - Q1
+print(IQR)
+
+# Defining boundaries to identify outliers
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+print(lower_bound)
+print(upper_bound)
+
+# Filtering out the outliers
+data <- sales_data[sales_data$Sales >= lower_bound & sales_data$Sales <= upper_bound, ]
+
+
+# Method Using Interquartile Range (IQR) for PROFIT
+
+# Calculating the IQR
+Q1 <- quantile(data$Profit, 0.25, na.rm = TRUE)
+Q3 <- quantile(data$Profit, 0.75, na.rm = TRUE)
+IQR <- Q3 - Q1
+print(IQR)
+
+# Defining boundaries to identify outliers
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+print(lower_bound)
+print(upper_bound)
+
+# Filtering out the outliers
+data_1 <- data[data$Profit >= lower_bound & data$Profit <= upper_bound, ]
+
+# Method Using Interquartile Range (IQR) for Shipping Cost
+
+# Calculating the IQR
+Q1 <- quantile(data_1$Shipping_Cost, 0.25, na.rm = TRUE)
+Q3 <- quantile(data_1$Shipping_Cost, 0.75, na.rm = TRUE)
+IQR <- Q3 - Q1
+print(IQR)
+
+# Defining boundaries to identify outliers
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+print(lower_bound)
+print(upper_bound)
+
+# Filtering out the outliers
+data_2 <- data_1[data_1$Shipping_Cost >= lower_bound & data_1$Shipping_Cost <= upper_bound, ]
+
+
+# DATA FORMATTING (formatting of dataset variables)
+
+# Formatting the data
+data_2 <- data_2 %>%
+  mutate(
+    # Convert dates to Date type
+    Order_Date = as.Date(Order_Date, format = "%Y-%m-%d"),
+    Ship_Date = as.Date(Ship_Date, format = "%Y-%m-%d"),
+    
+    # Ensure numeric fields are treated as numeric
+    Sales = as.numeric(gsub("[$,]", "", Sales)),
+    Quantity = as.numeric(Quantity),
+    Discount = as.numeric(sub("%$", "", Discount)) / 100,  # Convert percentage to decimal
+    Profit = as.numeric(gsub("[$,]", "", Profit)),
+    Shipping_Cost = as.numeric(Shipping_Cost),
+    Original_Price = as.numeric(gsub("[$,]", "", Original_Price)),
+    Cost_Good = as.numeric(gsub("[$,]", "", Cost_Good)),
+    
+    # Handle categorical data by converting them to factors
+    Ship_Mode = as.factor(Ship_Mode),
+    Customer_ID = as.factor(Customer_ID),
+    Customer_Name = as.factor(Customer_Name),
+    Segment = as.factor(Segment),
+    City = as.factor(City),
+    State = as.factor(State),
+    Country = as.factor(Country),
+    Region = as.factor(Region),
+    Market = as.factor(Market),
+    Product_ID = as.factor(Product_ID),
+    Category = as.factor(Category),
+    Sub_Category = as.factor(Sub_Category),
+    Product_Name = as.factor(Product_Name),
+    Order_Priority = as.factor(Order_Priority)
+  )
+
+# Verification Data Structure 
+str(data_2)
+
+#EXPLORATORY WITH THE ENTIRE DATASET ANALYSIS
+#Chart 1
+#This chart helps to identify which sub-categories are the most and least popular within 
+#each main category, providing insights into sales trends and inventory management.
+#The chart "Count by Category and Sub_Category" shows the frequency of items sold across
+#different sub-categories within Furniture, Office Supplies, and Technology. Office Supplies,
+#particularly Binders, Storage, and Art, dominate in sales frequency. Furniture categories 
+#like Chairs and Furnishings, and Technology items like Phones and Accessories 
+#also show significant counts. Overall, Office Supplies lead in sales volume, highlighting
+#key trends in inventory management.
+
+
+# Group by category and subcategory and sum the quantities
+
+frequency_data <- sales_data %>%
+  group_by(Category, Sub_Category) %>%
+  summarise(Frequency = sum(Quantity, na.rm = TRUE)) %>%
+  ungroup()
+
+# Create the chart
+ggplot(frequency_data, aes(x = Frequency, y = reorder(Sub_Category, Frequency), fill = Category)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Count by Category and Sub_Category", x = "Frequency", y = "Sub_Category") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Furniture" = "purple", "Office Supplies" = "blue", 
+  "Technology" = "green"))
+
+#Chart 2
+# The chart "Comparison of Profits by Order Priority" illustrates profits across different
+# categories (Furniture, Office Supplies, Technology) and order priorities (Critical, 
+# High, Low, Medium). Technology shows the highest profits, particularly with Medium priority 
+# orders. Office Supplies and Furniture also perform well with High and Medium priorities. 
+# Critical and Low priorities generally yield lower profits or losses across all categories.
+# The chart highlights that Medium priority orders are most profitable, especially in the
+# Technology category.
+# Create the chart
+ggplot(sales_data, aes(x = Order_Priority, y = Profit, fill = Order_Priority)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~Category, scales = "free_x") +
+  scale_fill_manual(values = c("cyan", "magenta", "purple", "green")) +
+  labs(
+    title = "Comparison of Profits by Order Priority",
+    x = "Order Priority",
+    y = "Profit"
+  ) +
+  theme_minimal()
+
+#Chart 3
+install.packages("reshape2")
+library(reshape2)
+
+#Average Discount HEATMAP
+#The chart "Average Discount by Region, Category, and Sub-Category" displays a heatmap
+#of average discounts across various regions and product categories. Darker shades indicate 
+#higher average discounts. Notable patterns include lower discounts in the regions such as 
+#Canada, Central Afric Eastern Asia Eastern US Southern Africa show lower average discounts 
+#across most categories while in regions like Weatwrn Asia Weastwer Africa and Central Asia 
+#present the higher discount accross the Category and Sub Category. The chart highlights 
+#regional variations in discount strategies for different product sub-categories, suggesting 
+#that discount practices are tailored to specific regional markets.
+
+avg_discount_data <- sales_data %>%
+  group_by(Region, Category, Sub_Category) %>%
+  summarise(Average_Discount = mean(Discount, na.rm = TRUE)) %>%
+  ungroup()
+
+ggplot(avg_discount_data, aes(x = Region, y = interaction(Category, Sub_Category), 
+  fill = Average_Discount)) + geom_tile() +
+  labs(title = "Average Discount by Region, Category, and Sub-Category", x = "Region", 
+  y = "Category / Sub-Category") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", na.value = "cyan") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#CHART 4
+#The chart "Average Profit by Region, Category, and Sub-Category" presents a heatmap showing
+#the average profit across various regions and product sub-categories. Darker shades of
+#blue indicate higher average profits. Key insights include higher profits for certain 
+#sub-categories like Technology-Copiers in Central US, Eastern US, Southern US, and Western US.
+#Most regions exhibit moderate to low average profits across sub-categories, with noticeable
+#variations suggesting that profitability is influenced by both regional market conditions and
+#product types. This visualization highlights areas where certain products are more profitable
+#in specific regions.
+
+#Average Profit HEATMAP
+avg_profit_data <- sales_data %>%
+  group_by(Region, Category, Sub_Category) %>%
+  summarise(Average_Profit = mean(Profit, na.rm = TRUE)) %>%
+  ungroup()
+
+ggplot(avg_profit_data, aes(x = Region, y = interaction(Category, Sub_Category), fill = Average_Profit)) +
+  geom_tile() +
+  labs(title = "Average Profit by Region, Category, and Sub-Category", x = "Region", 
+  y = "Category / Sub-Category") +
+  scale_fill_gradient(low = "#FFFF00", high = "#00FF00", na.value = "beige") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+#CHART 5
+#The chart "Average Profit by Region, Category" displays a heatmap illustrating the 
+#average profit for Technology, Office Supplies, and Furniture across various regions. 
+#Darker shades of blue represent higher average profits, while lighter shades and cyan 
+#indicate lower profits or losses. Key insights include higher profits in the Technology 
+#category for regions like Central Africa, Eastern Asia, Eastern Europe, Southern Asia  
+#and Southen Africa and lower profits or losses for Furniture in regions such as Western 
+#Africa and Central Asia. Office Supplies show moderate average profits across most regions. 
+#This visualization highlights how different product categories perform profit-wise in 
+#various regions, providing insights into regional profitability trends.
+
+#Average Profit HEATMAP
+avg_profit_data <- sales_data %>%
+  group_by(Region, Category) %>%
+  summarise(Average_Profit = mean(Profit, na.rm = TRUE)) %>%
+  ungroup()
+
+ggplot(avg_profit_data, aes(x = Region, y = interaction(Category), fill = Average_Profit)) +
+  geom_tile() +
+  labs(title = "Average Profit by Region, Category", x = "Region", y = "Category") +
+  scale_fill_gradient(low = "#FFC0CB", high = "#8B008B", na.value = "beige") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#Chart 6 SCOPE (BY SUB_CATEGORY)
+#The chart "Sales Comparison by Year and Sub-Category (2012 vs 2015)" shows the sales growth
+#for various sub-categories from 2012 to 2015. Phones and Copiers exhibit the most significant 
+#sales increases, followed by Bookcases, Chairs, and Storage. Appliances, Machines, and
+#Accessories show moderate growth, while Tables, Binders, and Furnishings have steady but less 
+#pronounced growth. Art, Supplies, Paper, Envelopes, Fasteners, and Labels remain relatively
+#stable with minimal growth. This highlights the sub-categories with the highest and lowest sales 
+#growth over the period.
+
+install.packages("lubridate")
+install.packages("ggrepel")
+library(ggrepel)
+library(lubridate)
+
+sales_data$Year <- year(sales_data$Order_Date)
+
+sales_by_year <- sales_data %>%
+  group_by(Year, Sub_Category, Category) %>%
+  summarise(Sales = sum(Sales, na.rm = TRUE)) %>%
+  ungroup()
+
+sales_by_year_filtered <- sales_by_year %>% 
+  filter(Year %in% c(2012, 2015))
+
+# Define a color palette with three colors for the categories
+category_colors <- c("Furniture" = "violet", "Office Supplies" = "blue", "Technology" = "green")
+
+ggplot(sales_by_year_filtered, aes(x = Year, y = Sales, group = Sub_Category, color = Category)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  geom_text_repel(data = subset(sales_by_year_filtered, Year == 2015),
+                  aes(label = Sub_Category),
+                  nudge_x = 0.5,
+                  direction = "y",
+                  hjust = 0,
+                  segment.color = 'grey') +
+  scale_color_manual(values = category_colors) +
+  scale_x_continuous(breaks = c(2012, 2015), limits = c(2012, 2016)) +
+  labs(title = "Sales Comparison by Year and Sub-Category (2012 vs 2015)", x = "", y = "Sales") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  coord_cartesian(clip = 'off')
+
+
+#Chart 7 SCOPE (BY CATEGORIA)
+#The chart "Sales Comparison by Year and Category (2012 vs 2015)" shows the sales trends
+#for Technology, Furniture, and Office Supplies from 2012 to 2015. Technology, represented 
+#in blue, shows the highest increase in sales, followed by Furniture in red and Office 
+#Supplies in green. Each category demonstrates significant growth over the period, with 
+#Technology leading in total sales by 2015
+
+# Extract the year from Order_Date
+sales_data$Year <- year(sales_data$Order_Date)
+
+sales_by_year <- sales_data %>%
+  group_by(Year, Category) %>%
+  summarise(Sales = sum(Sales, na.rm = TRUE)) %>%
+  ungroup()
+
+sales_by_year_filtered <- sales_by_year %>% 
+  filter(Year %in% c(2012, 2015))
+
+ggplot(sales_by_year_filtered, aes(x = Year, y = Sales, group = Category, color = Category)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  geom_text_repel(data = subset(sales_by_year_filtered, Year == 2015),
+                  aes(label = Category),
+                  nudge_x = 0.5,
+                  direction = "y",
+                  hjust = 0,
+                  segment.color = 'grey') +
+  scale_x_continuous(breaks = c(2012, 2015), limits = c(2012, 2016)) +
+  labs(title = "Sales Comparison by Year and Category (2012 vs 2015)", x = "", y = "Sales") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  coord_cartesian(clip = 'off')
+
+
+#Chart 8 Profit by year (With individual trasactions)
+#Shows the Profit for each transaction within each year. Each bar represents the sum 
+#of transactions for that year, with colors indicating gains or losses.
+
+profit_plot <- ggplot(sales_data, aes(x = factor(Year), y = Profit, fill = Profit < 0)) +
+  geom_bar(stat = "identity", width = 0.5) +
+  scale_fill_manual(values = c("TRUE" = "magenta", "FALSE" = "#8B008B")) +
+  labs(title = "Profit over 4 years", y = "Profit", x = "Year") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(fill = FALSE)  # Ocultar la leyenda
+
+print(profit_plot)
+
+#Chart 9 profit by year (without individual transactions)
+#Shows the aggregated Total Profit for each year. Each bar represents the total sum of 
+#all profits for the year, without showing individual transactions.
+
+sales_data <- sales_data %>%
+  mutate(Year = year(Order_Date))
+
+yearly_profit <- sales_data %>%
+  group_by(Year) %>%
+  summarise(Total_Profit = sum(Profit, na.rm = TRUE))
+
+profit_plot <- ggplot(yearly_profit, aes(x = Year, y = Total_Profit)) +
+  geom_bar(stat = "identity", fill = "#7FFFD4") +
+  labs(title = "Total Profit by Year", x = "Year", y = "Total Profit") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+print(profit_plot)
+
+
+#Chart 10 Profit by Category and Subcategory
+
+#The chart "Profit by Category and Sub-Category" shows that **Copiers** in the Technology
+#category have the highest profit at 258,568, followed by **Phones** at 216,717. In contrast,
+#Tables in the Furniture category show the most significant loss with a negative profit 
+#of -64,083. Technology sub-categories dominate the highest profits, while Furniture has the 
+#lowest profit with notable losses in Tables.
+
+
+profit_data <- sales_data %>%
+  group_by(Category, Sub_Category) %>%
+  summarise(Total_Profit = sum(Profit, na.rm = TRUE)) %>%
+  ungroup()
+
+profit_plot <- ggplot(profit_data, aes(x = Total_Profit, y = Sub_Category , fill = Category)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = scales::comma(Total_Profit)), vjust = -0.5, size = 3) +
+  labs(title = "Profit by Category and Sub-Category", y = "Sub-Category", x = "Total Profit") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = c("Furniture" = "#C8A2C8", "Office Supplies" = "turquoise",
+  "Technology" = "#C0C0C0"))
+
+# Print the plot
+print(profit_plot)
+
+#Chart 11 SCATTERPLOT BY CUSTOMER_ID
+#The chart "Profit vs Sales by Sub_Category and Customer_ID" is a scatter plot that illustrates 
+#the relationship between sales and profit for various sub-categories, with each point representing 
+#a unique Customer_ID. The sub-categories are color-coded as shown in the legend.
+
+#Key Insights:
+#1.Positive Correlation: There is a general positive correlation between sales and profit, 
+#meaning higher sales tend to be associated with higher profits.
+#2.High Profit and Sales: Sub-categories such as Bookcases (green) and Appliances (orange) 
+#show high sales and correspondingly high profits.
+#3.Low Profit and Sales: Some sub-categories, like Tables (pink) and Machines (blue), 
+#have lower sales and are closer to or below the zero-profit line, indicating they might 
+#not be performing well.
+#4.Outliers: There are notable outliers, such as one point with high sales but very 
+#low profit, indicating a potential issue with that sub-category.
+#5.Customer-Specific Data: The inclusion of Customer_ID adds a layer of granularity,showing 
+#the sales and profit performance at the individual customer level for each sub-category.
+
+scatter_plot <- ggplot(sales_data, aes(x = Sales, y = Profit, color = Sub_Category)) +
+  geom_point(size = 3) +
+  labs(title = "Profit vs Sales by Sub_Category and Customer_ID",
+       x = "Sales",
+       y = "Profit",
+       color = "Sub_Category") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+print(scatter_plot)
+
+
+#EXPLORATORY DATASET ANALYSIS AFTER CLEANING DATA
+
+#This chart identifies which sub-categories are the most and least popular within each 
+#main category, providing insights into sales trends and inventory management.
+#Chart 1
+frequency_data <- data_2 %>%
+  group_by(Category, Sub_Category) %>%
+  summarise(Frequency = sum(Quantity, na.rm = TRUE)) %>%
+  ungroup()
+
+# Crear el gráfico
+ggplot(frequency_data, aes(x = Frequency, y = reorder(Sub_Category, Frequency), fill = Category)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Count by Category and Sub_Category", x = "Frequency", y = "Sub_Category") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Furniture" = "purple", "Office Supplies" = "blue", "Technology" = "green"))
+
+#Chart 2
+# The chart "Comparison of Profits by Order Priority" illustrates profits across 
+# different categories (Furniture, Office Supplies, Technology) and order priorities 
+# (Critical, High, Low, Medium).
+
+# Create the plot
+
+ggplot(data_2, aes(x = Order_Priority, y = Profit, fill = Order_Priority)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~Category, scales = "free_x") +
+  scale_fill_manual(values = c("cyan", "magenta", "purple", "green")) +
+  labs(
+    title = "Comparison of Profits by Order Priority",
+    x = "Order Priority",
+    y = "Profit"
+  ) +
+  theme_minimal()
+
+
+#Chart 3
+#The chart "Average Discount by Region, Category, and Sub-Category" displays a heatmap of
+#average discounts across various regions and product categories. Darker shades indicate 
+#higher average discounts while lighter shades indicate lower profits or losses.
+
+#Average Discount HEATMAP
+avg_discount_data <- data_2 %>%
+  group_by(Region, Category, Sub_Category) %>%
+  summarise(Average_Discount = mean(Discount, na.rm = TRUE)) %>%
+  ungroup()
+
+ggplot(avg_discount_data, aes(x = Region, y = interaction(Category, Sub_Category), fill = Average_Discount)) +
+  geom_tile() +
+  labs(title = "Average Discount by Region, Category, and Sub-Category", x = "Region", y = "Category / Sub-Category") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", na.value = "cyan") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#CHART 4
+#The chart "Average Profit by Region, Category" displays a heatmap illustrating the
+#average profit for Technology, Office Supplies, and Furniture across various regions. 
+#Darker shades of blue represent higher average profits, while lighter shades and cyan 
+#indicate lower profits or losses. Key insights include higher profits in the Technology category for regions like Central Africa, Eastern Asia, Eastern Europe, Southern Asia  and Southen Africa and lower profits or losses for Furniture in regions such as Western Africa and Central Asia. Office Supplies show moderate average profits across most regions. This visualization highlights how different product categories perform profit-wise in various regions, providing insights into regional profitability trends.#Average Profit HEATMAP
+#Average Profit HEATMAP
+avg_profit_data <- data_2 %>%
+  group_by(Region, Category, Sub_Category) %>%
+  summarise(Average_Profit = mean(Profit, na.rm = TRUE)) %>%
+  ungroup()
+
+ggplot(avg_profit_data, aes(x = Region, y = interaction(Category, Sub_Category), fill = Average_Profit)) +
+  geom_tile() + labs(title = "Average Profit by Region, Category, and Sub-Category", x = "Region", 
+  y = "Category / Sub-Category") +
+  scale_fill_gradient(low = "#FFFF00", high = "#00FF00", na.value = "beige") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#CHART 5
+#The chart "Average Profit by Region, Category" displays a heatmap illustrating the average
+#profit for Technology, Office Supplies, and Furniture across various regions. Darker shades 
+#of blue represent higher average profits, while lighter shades and cyan indicate lower profits
+#or losses.
+
+avg_profit_data <- data_2 %>%
+  group_by(Region, Category) %>%
+  summarise(Average_Profit = mean(Profit, na.rm = TRUE)) %>%
+  ungroup()
+
+ggplot(avg_profit_data, aes(x = Region, y = interaction(Category), fill = Average_Profit)) +
+  geom_tile() +
+  labs(title = "Average Profit by Region, Category", x = "Region", y = "Category") +
+  scale_fill_gradient(low = "#FFC0CB", high = "#8B008B", na.value = "beige") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+#Chart 6 SCOPE (BY SUB_CATEGORY)
+#The chart "Sales Comparison by Year and Sub-Category (2012 vs 2015)" shows the sales 
+#growth for various sub-categories from 2012 to 2015.
+
+data_2$Year <- year(data_2$Order_Date)
+
+sales_by_year <- data_2 %>%
+  group_by(Year, Sub_Category, Category) %>%
+  summarise(Sales = sum(Sales, na.rm = TRUE)) %>%
+  ungroup()
+
+sales_by_year_filtered <- sales_by_year %>% 
+  filter(Year %in% c(2012, 2015))
+
+# Define a color palette with three colors for the categories
+category_colors <- c("Furniture" = "violet", "Office Supplies" = "blue", "Technology" = "green")
+
+ggplot(sales_by_year_filtered, aes(x = Year, y = Sales, group = Sub_Category, color = Category)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  geom_text_repel(data = subset(sales_by_year_filtered, Year == 2015),
+                  aes(label = Sub_Category),
+                  nudge_x = 0.5,
+                  direction = "y",
+                  hjust = 0,
+                  segment.color = 'grey') +
+  scale_color_manual(values = category_colors) +
+  scale_x_continuous(breaks = c(2012, 2015), limits = c(2012, 2016)) +
+  labs(title = "Sales Comparison by Year and Sub-Category (2012 vs 2015)", x = "", y = "Sales") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  coord_cartesian(clip = 'off')
+
+
+#Chart 7 SCOPE (BY CATEGORIA)
+#The chart "Sales Comparison by Year and Category (2012 vs 2015)" shows the sales trends 
+#for Technology, Furniture, and Office Supplies from 2012 to 2015.
+
+
+# Extract the year from Order_Date
+data_2$Year <- year(data_2$Order_Date)
+
+sales_by_year <- data_2 %>%
+  group_by(Year, Category) %>%
+  summarise(Sales = sum(Sales, na.rm = TRUE)) %>%
+  ungroup()
+
+sales_by_year_filtered <- sales_by_year %>% 
+  filter(Year %in% c(2012, 2015))
+library(ggplot2)
+library(ggrepel)
+
+ggplot(sales_by_year_filtered, aes(x = Year, y = Sales, group = Category, color = Category)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  geom_text_repel(data = subset(sales_by_year_filtered, Year == 2015),
+                  aes(label = Category),
+                  nudge_x = 0.5,
+                  direction = "y",
+                  hjust = 0,
+                  segment.color = 'grey') +
+  scale_x_continuous(breaks = c(2012, 2015), limits = c(2012, 2016)) +
+  labs(title = "Sales Comparison by Year and Category (2012 vs 2015)", x = "", y = "Sales") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  coord_cartesian(clip = 'off')
+
+
+# Chart 8 Profit by year (With individual trasactions)
+# Shows the Profit for each transaction within each year. Each bar represents the sum of 
+# transactions for that year, with colors indicating gains or losses.
+
+profit_plot <- ggplot(data_2, aes(x = factor(Year), y = Profit, fill = Profit < 0)) +
+  geom_bar(stat = "identity", width = 0.5) +
+  scale_fill_manual(values = c("TRUE" = "magenta", "FALSE" = "#8B008B")) +
+  labs(title = "Profit over 4 years", y = "Profit", x = "Year") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(fill = FALSE)  # Ocultar la leyenda
+
+print(profit_plot)
+
+#Chart 9 profit by year (without individual transactions)
+#Shows the aggregated Total Profit for each year. Each bar represents the total sum of 
+#all profits for the year, without showing individual transactions.
+
+data_2 <- data_2 %>%
+  mutate(Year = year(Order_Date))
+
+yearly_profit <- data_2 %>%
+  group_by(Year) %>%
+  summarise(Total_Profit = sum(Profit, na.rm = TRUE))
+
+profit_plot <- ggplot(yearly_profit, aes(x = Year, y = Total_Profit)) +
+  geom_bar(stat = "identity", fill = "#7FFFD4") +
+  labs(title = "Total Profit by Year", x = "Year", y = "Total Profit") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+print(profit_plot)
+
+
+#Chart 10 Profit by Category and Subcategory
+#The chart "Profit by Category and Sub-Category" shows the total profit for various 
+#sub-categories within the Furniture, Office Supplies, and Technology categories. 
+#Binders and Storage in Office Supplies have the highest profits, with 39,606 and 37,406 
+#respectively. Phones in Technology also perform well with a profit of 35,865. Conversely,
+#Tables in Furniture have the lowest profit at 41. This highlights significant profitability
+#differences across sub-categories, with Office Supplies generally showing higher profits 
+#compared to Furniture and Technology.
+
+profit_data <- data_2 %>%
+  group_by(Category, Sub_Category) %>%
+  summarise(Total_Profit = sum(Profit, na.rm = TRUE)) %>%
+  ungroup()
+
+profit_plot <- ggplot(profit_data, aes(x = Total_Profit, y = Sub_Category , fill = Category)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = scales::comma(Total_Profit)), vjust = -0.5, size = 3) +
+  labs(title = "Profit by Category and Sub-Category", y = "Sub-Category", x = "Total Profit") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = c("Furniture" = "#C8A2C8", "Office Supplies" = "turquoise", "Technology" = "#C0C0C0"))
+
+# Mostrar el gráfico de ganancias
+print(profit_plot)
+
+#Chart 11 SCATTERPLOT BY CUSTOMER_ID
+#The chart indicates a positive correlation between sales and profit across most 
+#sub-categories, with a dense clustering of data points around lower sales and 
+#profit values. Notably, sub-categories like Bookcases, Binders, and Phones show 
+#higher profit and sales, while others like Tables and Machines have more scattered 
+#lower values. 
+
+scatter_plot <- ggplot(data_2, aes(x = Sales, y = Profit, color = Sub_Category)) +
+  geom_point(size = 3) +
+  labs(title = "Profit vs Sales by Sub_Category",
+       x = "Sales",
+       y = "Profit",
+       color = "Sub_Category") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+print(scatter_plot)
+
+
+
+# INGENIERIA DE CARACTERISTICAS Feature Engineering 
+# Load necessary libraries
+# Then, apply your transformations
+install.packages("zoo")
+library(dplyr)
+library(lubridate)
+library(zoo) # for rollapply
+
+# FEATURE 1 Create Temporal Features
+# This feature extracts relevant information from the order date. The intuition behind 
+# these features is to capture any seasonal, cyclical, or general trends over time that
+# might be related to sales.
+
+data_2 <- data_2 %>%
+  mutate(
+    Month = lubridate::month(Order_Date),
+    Year = lubridate::year(Order_Date),
+    DayOfWeek = lubridate::wday(Order_Date, label = TRUE)
+  )
+
+# FEATURES 2 Sort and then create Aggregated Historical Features
+# This block organizes the data in chronological order and calculates measures that summarize 
+# past sales behavior, which can be useful for predicting future sales.
+data_2 <- data_2 %>%
+  arrange(Order_Date, Customer_ID) %>%
+  group_by(Customer_ID) %>%
+  mutate(
+    Past_Sales = lag(Sales, order_by = Order_Date), # previous sale
+    Rolling_Average_Sales = rollapply(Sales, width = 3, FUN = mean, partial = TRUE, fill = NA, align = "right")
+  ) %>%
+  ungroup()
+
+# FEATURES 3 Create Customer Behavior Features / 
+# This feature focuses on the customer's purchasing behavior and their relationship with the company, which can be an indicator of loyalty and long-term value.
+
+data_2 <- data_2 %>%
+  group_by(Customer_ID) %>%
+  mutate(
+    Purchase_Frequency = n(), # counts the number of purchases by the customer
+    Customer_Lifetime_Value = cumsum(Sales) # cumulative sum of sales
+  ) %>%
+  ungroup()
+
+#FEATURES 4 Feature Based on Discounts 
+# Create discount bins
+data_2$Discount_Bin <- cut(data_2$Discount, breaks = c(0, 0.05, 0.10, 0.20, 1), 
+                       labels = c("0-5%", "6-10%", "11-20%", ">20%"), include.lowest = TRUE)
+
+# Calculate the average discount by category
+data_2 <- data_2 %>%
+  group_by(Category) %>%
+  mutate(Average_Discount = mean(Discount, na.rm = TRUE),
+         Discount_Above_Average = ifelse(Discount > Average_Discount, 1, 0)) %>%
+  ungroup()
+
+data_2$Discount_Above_Average <- factor(data_2$Discount_Above_Average)
+
+# Create an interaction feature between discount and quantity for all categories
+data_2$Discount_Quantity_Interaction <- data_2$Discount * data_2$Quantity
+
+
+# FEATURES 5 Based on Sales
+data_2 <- data_2 %>%
+  arrange(Customer_ID, Order_Date) %>%
+  group_by(Customer_ID) %>%
+  mutate(Total_Sales_Accum = cumsum(Sales)) %>%
+  ungroup()
+
+# Set a sales threshold, for example, the average sales
+average_sales <- mean(data_2$Sales, na.rm = TRUE)
+
+data_2 <- data_2 %>%
+  mutate(Sales_Above_Average = ifelse(Sales > average_sales, 1, 0))
+
+data_2$Sales_Above_Average <- factor(data_2$Sales_Above_Average)
+
+# FEATURES 6 Based on Shipping Cost
+data_2 <- data_2 %>%
+  mutate(
+    Shipping_Cost_Per_Sale = Shipping_Cost / Sales,  # Costo de envío por unidad de venta
+    High_Shipping_Cost = ifelse(Shipping_Cost_Per_Sale > median(Shipping_Cost_Per_Sale, na.rm = TRUE), 1, 0)
+  )
+
+data_2$High_Shipping_Cost <- factor(data_2$High_Shipping_Cost)
+
+# DATA DIVISION BY TIME SERIES (2012-2014 training data, 2015 test data)
+library(dplyr)
+library(lubridate)
+
+# Being the data in 'data_frame' and the date column is 'Order_Date'
+data_2$Order_Date <- as.Date(data_2$Order_Date, format = "%Y-%m-%d")
+
+# Sort the data by date
+data_2 <- data_2 %>% arrange(Order_Date)
+
+# Find the date that divides the sets
+summary(data_2$Order_Date)  # This will give you an idea of the distribution of the dates
+
+
+# Determine the cut-off index based on a percentage
+corte_index <- floor(0.8 * nrow(data_2))
+
+# Split the data using the index
+train_data <- data_2[1:corte_index, ]
+test_data  <- data_2[(corte_index + 1):nrow(data_2), ]
+
+# Check the first rows of the data frame to confirm the presence of new features
+head(train_data)
+
+# Or get a summary to see all the columns
+summary(train_data)
+
+# Formatting the data
+train_data <- train_data %>%
+  mutate(
+    # Convert dates to Date type
+    Order_Date = as.Date(Order_Date, format = "%Y-%m-%d"),
+    Ship_Date = as.Date(Ship_Date, format = "%Y-%m-%d"),
+    
+    # Ensure numeric fields are treated as numeric
+    Sales = as.numeric(gsub("[$,]", "", Sales)),
+    Quantity = as.numeric(Quantity),
+    Discount = as.numeric(sub("%$", "", Discount)) / 100,  # Convert percentage to decimal
+    Profit = as.numeric(gsub("[$,]", "", Profit)),
+    Shipping_Cost = as.numeric(Shipping_Cost),
+    Original_Price = as.numeric(gsub("[$,]", "", Original_Price)),
+    Cost_Good = as.numeric(gsub("[$,]", "", Cost_Good)),
+    
+    # Handle categorical data by converting them to factors
+    Ship_Mode = as.factor(Ship_Mode),
+    Customer_ID = as.factor(Customer_ID),
+    Customer_Name = as.factor(Customer_Name),
+    Segment = as.factor(Segment),
+    City = as.factor(City),
+    State = as.factor(State),
+    Country = as.factor(Country),
+    Region = as.factor(Region),
+    Market = as.factor(Market),
+    Product_ID = as.factor(Product_ID),
+    Category = as.factor(Category),
+    Sub_Category = as.factor(Sub_Category),
+    Product_Name = as.factor(Product_Name),
+    Order_Priority = as.factor(Order_Priority)
+  )
+
+
+#GRADIANT BOOSTING MACHINE
+# Step 1: Load necessary libraries
+install.packages("readxl")
+install.packages("caret")
+install.packages("gbm")
+install.packages("dplyr")
+install.packages("caTools")
+install.packages("lubridate")
+install.packages("zoo")
+library(readxl)
+library(gbm)
+library(dplyr)
+library(caTools)
+library(lubridate)
+library(caret)
+
+# Fit the GBM model
+# The Profit is the target variable and I want to use all other variables as predictors
+gbm_model <- gbm(Profit ~ . - Orde_ID - Order_Date - Ship_Date - Customer_ID - City - State 
+           - Product_ID - Product_Name + Month + Year + Past_Sales + Rolling_Average_Sales
+           + Purchase_Frequency + Discount_Above_Average + Total_Sales_Accum + Sales_Above_Average
+           + Shipping_Cost_Per_Sale, # The '.' indicates that all other variables are used as predictors
+           data = train_data, 
+           distribution = "gaussian",  # Use 'gaussian' for regression problems
+           n.trees = 600,  # Number of trees to grow
+           interaction.depth = 4,  # Interaction depth (depth of each tree)
+           shrinkage = 0.01,  # Learning rate
+           cv.folds = 5,  # Number of folds for cross-validation
+           n.minobsinnode = 10,  # Minimum number of observations in terminal nodes
+           verbose = TRUE)  # Print information during the training process
+
+print(gbm_model)
+
+# IMPORTANCE OF ENGINEERING FEATURES
+# Adjust the margins (the numbers are the margins in lines for bottom, left, top, and right)
+par(mar=c(4, 4, 2, 2))
+
+# Obtain the feature importance
+importance <- summary(gbm_model)
+
+# Print the feature importance
+print(importance)
+
+# Create a data frame from the summary output 
+importance <- as.data.frame(importance)
+names(importance) <- c("Feature", "RelativeImportance")
+
+# Plot using ggplot2
+ggplot(importance, aes(x = reorder(Feature, RelativeImportance), y = RelativeImportance)) +
+  geom_col(fill = "blue") +
+  coord_flip() +
+  labs(title = "Feature Importance", x = "Features", y = "Relative Importance")
+
+# The chart "Feature Importance" shows the relative importance of various features in 
+# predicting a target variable. The most important features are **Discount**, **Sales**, 
+# and **Customer Name**, which have the highest relative importance scores. Other 
+# significant features include **Cost Good**, **Original Price**, and **Past Sales**.
+# Features such as **Category**, **Average Discount**, and **Customer Lifetime Value**  
+# are among the least important. This visualization highlights which factors are most 
+# influential in the model's predictions.
+
+# FEATURES REMOVING VARIABLES We proceed to remove the following features because they are
+# not relevant: High Shipping Cost, Customer Lifetime Value, Day of Week, Discount Bin, 
+# Average Discount   
+
+# APPLICATION OF THE MODEL ON THE TEST SET
+# Predict using the test dataset
+predictions <- predict(gbm_model, newdata = test_data, n.trees = 600)
+print(predictions[1:10])
+
+# MODEL PERFORMANCE CALCULATION (RMSE ERROR)
+# Calculate RMSE
+actual <- test_data$Profit  # Assuming 'Profit' is the variable to predict
+rmse <- sqrt(mean((predictions - actual)^2))
+print(paste("RMSE: ", rmse))
+
+data_2$Profit <- as.numeric(data_2$Profit)
+min_profit <- min(data_2$Profit, na.rm = TRUE)  # na.rm = TRUE omits NA values in the calculation
+max_profit <- max(data_2$Profit, na.rm = TRUE)
+print(paste("The range of Profit goes from", min_profit, "to", max_profit))
+
+# MULTIPLE LINEAR REGRESSION
+Regression <- lm(Profit ~ Discount * Sub_Category * Sales, data = data_2)
+print(Regression)
+
+# Summarize the fitted model
+summary(Regression)
+
+
+#Variable month 
+data_2 <- data_2 %>%
+  mutate(month = month(Order_Date, label = TRUE))
+
+Regression_month <- lm(Profit ~ month + Discount, data = data_2)
+print(Regression_month)
+
+summary(Regression_month)
+
+
