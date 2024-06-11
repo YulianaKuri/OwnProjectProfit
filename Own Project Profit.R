@@ -3,6 +3,8 @@
 
 Sys.setenv(LANG = "en_US.UTF-8")
 
+# 4. DATA LOADING AND INITIAL EXPLORATION
+
 # Load necessary packages
 install.packages("rmarkdown")
 install.packages("knitr")
@@ -14,9 +16,6 @@ library(readxl)
 library(dplyr)
 library(ggplot2)
 library(dplyr)
-
-# download.file("https://view.officeapps.live.com/op/view.aspx?src=https%3A%2F%2Fraw.githubusercontent.com%2FYulianaKuri%2FSalesOwnProject%2Fmain%2FGlobal%2520Superstore%2520Orders%25202015.xlsx&wdOrigin=BROWSELINK, destfile = "archivo.xlsx", mode = "wb")
-# sales_data <- read_excel("archivo.xlsx")
 
 # Set working directory and load data
 
@@ -62,6 +61,8 @@ ggplot(sales_data, aes(y = Shipping_Cost)) +
 ggplot(sales_data, aes(y = Profit)) +
   geom_boxplot(fill = "violet") +
   ggtitle("Boxplot de Profit")
+
+# 5. DATA CLEANING
 
 # OUTLIER CLEANING METHOD
 # Method Using Interquartile Range (IQR) for SALES
@@ -154,6 +155,8 @@ data_2 <- data_2 %>%
 
 # Verification Data Structure 
 str(data_2)
+
+# 6. EXPLORATORY DATA ANALYSIS (EDA)
 
 #EXPLORATORY WITH THE ENTIRE DATASET ANALYSIS
 #Chart 1
@@ -684,9 +687,8 @@ scatter_plot <- ggplot(data_2, aes(x = Sales, y = Profit, color = Sub_Category))
 
 print(scatter_plot)
 
+# 7. FEATURE ENGINEERING
 
-
-# INGENIERIA DE CARACTERISTICAS Feature Engineering 
 # Load necessary libraries
 # Then, apply your transformations
 install.packages("zoo")
@@ -831,6 +833,7 @@ train_data <- train_data %>%
     Order_Priority = as.factor(Order_Priority)
   )
 
+# 8. DATA MODELING GMB
 
 #GRADIANT BOOSTING MACHINE
 # Step 1: Load necessary libraries
@@ -912,6 +915,8 @@ data_2$Profit <- as.numeric(data_2$Profit)
 min_profit <- min(data_2$Profit, na.rm = TRUE)  # na.rm = TRUE omits NA values in the calculation
 max_profit <- max(data_2$Profit, na.rm = TRUE)
 print(paste("The range of Profit goes from", min_profit, "to", max_profit))
+
+# 9. DATA MODELING LINEAR REGRESSION
 
 # MULTIPLE LINEAR REGRESSION
 Regression <- lm(Profit ~ Discount * Sub_Category * Sales, data = data_2)
